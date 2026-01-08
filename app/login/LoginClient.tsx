@@ -216,6 +216,8 @@ export default function LoginClient() {
                 console.warn("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set")
                 return
               }
+              console.log("GIS clientId:", clientId)
+              console.log("Origin:", window.location.origin)
               window.google.accounts.id.initialize({
                 client_id: clientId,
                 callback: handleGoogleCredential,
