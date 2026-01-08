@@ -38,6 +38,77 @@ body {
   cursor: none;
 }
 
+/* Theme-aware text color for body copy on light vs dark */
+.text-soft {
+  color: #9ca3af; /* slate-400 default / dark mode */
+}
+
+html[data-theme="light"] .text-soft {
+  color: #4b5563; /* slate-700 in light mode for better contrast */
+}
+
+/* Light-mode heading tweaks so cards are readable on bright surfaces */
+html[data-theme="light"] .card-heading {
+  color: #0f172a; /* slate-900 */
+}
+
+/* Inner cards on summarize page (MCQs, flashcards) */
+html[data-theme="dark"] .subcard-soft {
+  background-color: rgba(15, 23, 42, 0.96); /* deep slate */
+  border-color: rgba(51, 65, 85, 0.95);
+}
+
+html[data-theme="light"] .subcard-soft {
+  background-color: rgba(248, 250, 252, 0.98); /* near white */
+  border-color: rgba(203, 213, 225, 0.95); /* slate-300 */
+}
+
+/* MCQ answer options */
+.mcq-option-soft {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+html[data-theme="dark"] .mcq-option-soft {
+  background-color: rgba(15, 23, 42, 0.96);
+  border-color: rgba(71, 85, 105, 0.95);
+  color: #e5e7eb;
+}
+
+html[data-theme="light"] .mcq-option-soft {
+  background-color: rgba(241, 245, 249, 0.98); /* slate-100 */
+  border-color: rgba(148, 163, 184, 0.95); /* slate-400 */
+  color: #0f172a;
+}
+
+/* Summary body text: stronger contrast & slightly bolder */
+.summary-body p,
+.summary-body li {
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .summary-body p,
+html[data-theme="dark"] .summary-body li {
+  color: #e5e7eb; /* slate-200 */
+}
+
+html[data-theme="light"] .summary-body p,
+html[data-theme="light"] .summary-body li {
+  color: #0f172a; /* slate-900 for readability */
+}
+
+/* Softer dark-mode surfaces so the UI feels closer to light mode */
+html[data-theme="dark"] .card-soft {
+  background-color: rgba(15, 23, 42, 0.92); /* slate-900-ish */
+  border-color: rgba(51, 65, 85, 0.9); /* slate-700 */
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+}
+
+html[data-theme="light"] .card-soft {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(148, 163, 184, 0.6); /* slate-400 */
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+}
+
 button,
 a {
   cursor: pointer;

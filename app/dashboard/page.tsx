@@ -139,7 +139,12 @@ export default function DashboardPage() {
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Dashboard</p>
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-              Welcome back{email ? `, ${email}` : ""}
+              <span
+                className="text-scramble"
+                data-scramble-text={`Welcome back${email ? `, ${email}` : ""}`}
+              >
+                Welcome back{email ? `, ${email}` : ""}
+              </span>
             </h1>
             <p className="text-xs md:text-sm text-slate-400 max-w-md">
               Jump into smart notes, plan what to study next, and keep an eye on how your revision is adding up.

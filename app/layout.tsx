@@ -4,6 +4,8 @@ import ThemeToggle from "./ThemeToggle"
 import MouseGlow from "./MouseGlow"
 import PhysicsButtons from "./PhysicsButtons"
 import ScrollReveal from "./ScrollReveal"
+import TextScramble from "./TextScramble"
+import AnimatedSvgLines from "./AnimatedSvgLines"
 import ChatWidget from "./ChatWidget"
 
 export const metadata: Metadata = {
@@ -25,6 +27,8 @@ export default function RootLayout({
         <MouseGlow />
         <PhysicsButtons />
         <ScrollReveal />
+        <TextScramble />
+        <AnimatedSvgLines />
         <div className="fixed right-4 top-4 z-50">
           <ThemeToggle />
         </div>

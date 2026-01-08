@@ -73,10 +73,31 @@ export default function RegisterPage() {
             Study Buddy · Create account
           </div>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
-            Set up your
+            <span
+              className="text-scramble"
+              data-scramble-text="Set up your"
+            >
+              Set up your
+            </span>
             <span className="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent"> learning workspace</span>
             .
           </h1>
+          <div className="mt-3 h-6">
+            <svg
+              viewBox="0 0 200 40"
+              className="h-full w-40 text-indigo-300/80"
+              aria-hidden="true"
+            >
+              <path
+                className="draw-svg-path"
+                d="M4 30 C 40 8, 80 8, 120 30 S 196 52, 196 30"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
           <p className="text-base md:text-lg text-slate-400 max-w-md">
             Build a secure account with a strong password and let the AI keep your notes, PDFs, and quizzes in sync.
           </p>
@@ -105,7 +126,7 @@ export default function RegisterPage() {
               className="relative"
             >
               <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-indigo-500/40 via-sky-500/30 to-purple-500/40 blur-xl opacity-60" />
-              <div className="relative rounded-3xl border border-slate-800 bg-slate-950/80 backdrop-blur-xl p-8 shadow-2xl">
+              <div className="relative card-soft rounded-3xl border border-slate-800 bg-slate-950/80 backdrop-blur-xl p-8 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-semibold">Create account</h2>
@@ -260,7 +281,7 @@ export default function RegisterPage() {
               className="relative"
             >
               <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-emerald-500/40 via-sky-500/30 to-indigo-500/40 blur-xl opacity-70" />
-              <div className="relative bg-slate-950/80 rounded-3xl p-10 text-center shadow-2xl border border-slate-800">
+              <div className="relative card-soft bg-slate-950/80 rounded-3xl p-10 text-center shadow-2xl border border-slate-800">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}

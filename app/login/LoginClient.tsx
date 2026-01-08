@@ -102,9 +102,30 @@ export default function LoginClient() {
             Study Buddy · AI powered
           </div>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
-            Welcome back to your
+            <span
+              className="text-scramble"
+              data-scramble-text="Welcome back to your"
+            >
+              Welcome back to your
+            </span>
             <span className="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent"> smart study space.</span>
           </h1>
+          <div className="mt-3 h-6">
+            <svg
+              viewBox="0 0 200 40"
+              className="h-full w-40 text-indigo-300/80"
+              aria-hidden="true"
+            >
+              <path
+                className="draw-svg-path"
+                d="M4 30 C 40 8, 80 8, 120 30 S 196 52, 196 30"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
           <p className="text-base md:text-lg text-slate-400 max-w-md">
             Log in to access your AI summaries, saved PDFs, and personalized learning sessions—all in one clean dashboard.
           </p>
@@ -129,7 +150,7 @@ export default function LoginClient() {
           className="relative"
         >
           <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-indigo-500/40 via-sky-500/30 to-purple-500/40 blur-xl opacity-60" />
-          <div className="relative rounded-3xl border border-slate-800 bg-slate-950/80 backdrop-blur-xl p-8 shadow-2xl">
+          <div className="relative card-soft rounded-3xl border border-slate-800 bg-slate-950/80 backdrop-blur-xl p-8 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold">Sign in</h2>

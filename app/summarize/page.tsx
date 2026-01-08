@@ -4,7 +4,7 @@ import ReactMarkdown, { type Components } from "react-markdown"
 import PptxGenJS from "pptxgenjs"
 import { useRouter } from "next/navigation"
 
-type Mode = "text" | "url" | "pdf"
+type Mode = "text" | "url" | "pdf" | "audio"
 
 type Mcq = {
   question: string
@@ -36,7 +36,8 @@ export default function SummarizePage() {
   const [mode, setMode] = useState<Mode>("text")
   const [text, setText] = useState("")
   const [url, setUrl] = useState("")
-  const [file, setFile] = useState<File | null>(null)
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [audioFile, setAudioFile] = useState<File | null>(null)
   const [summary, setSummary] = useState("")
   const [keywords, setKeywords] = useState<string[]>([])
   const [mcqs, setMcqs] = useState<Mcq[]>([])
@@ -57,6 +58,8 @@ export default function SummarizePage() {
   const [selectedVoice, setSelectedVoice] = useState<string>("")
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [showCardBack, setShowCardBack] = useState(false)
+  const [isCustomMaxWords, setIsCustomMaxWords] = useState(false)
+  const [customMaxWords, setCustomMaxWords] = useState<number>(200)
 
   const STORAGE_KEY_PREFIX = "ai-study-buddy:user:"
   const CONTEXT_STORAGE_KEY = "ai-study-buddy:context"
@@ -168,6 +171,13 @@ export default function SummarizePage() {
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
+  const summaryWordCount = summary
+    ? summary
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length
+    : 0
+
   const handleSummarize = async () => {
     setError(null)
     setSummary("")
@@ -204,10 +214,10 @@ export default function SummarizePage() {
         }
         baseText = data.text as string
         sourceTitle = url.trim()
-      } else {
-        if (!file) throw new Error("Please upload a PDF file.")
+      } else if (mode === "pdf") {
+        if (!pdfFile) throw new Error("Please upload a PDF file.")
         const formData = new FormData()
-        formData.append("file", file)
+        formData.append("file", pdfFile)
         const token =
           typeof window !== "undefined" ? window.localStorage.getItem("token") : null
         const res = await fetch("/api/pdf", {
@@ -222,7 +232,26 @@ export default function SummarizePage() {
           throw new Error(data.error || "Could not read PDF file.")
         }
         baseText = data.text as string
-        sourceTitle = file.name || "PDF upload"
+        sourceTitle = pdfFile.name || "PDF upload"
+      } else if (mode === "audio") {
+        if (!audioFile) throw new Error("Please upload an audio file.")
+        const formData = new FormData()
+        formData.append("file", audioFile)
+        const token =
+          typeof window !== "undefined" ? window.localStorage.getItem("token") : null
+        const res = await fetch("/api/audio", {
+          method: "POST",
+          body: formData,
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error || "Could not transcribe audio file.")
+        }
+        baseText = data.text as string
+        sourceTitle = audioFile.name || "Audio upload"
       }
 
       const result = await summarizeText(baseText, maxWords)
@@ -296,6 +325,18 @@ export default function SummarizePage() {
       return
     }
 
+    const removeMermaidErrorSvgs = () => {
+      if (typeof document === "undefined") return
+      const svgs = document.querySelectorAll("svg")
+      svgs.forEach((el) => {
+        if (el.textContent && el.textContent.includes("Syntax error in text")) {
+          const parent = el.parentElement
+          if (parent) parent.remove()
+          else el.remove()
+        }
+      })
+    }
+
     let cancelled = false
     setMindmapRendering(true)
     setMindmapError(null)
@@ -307,13 +348,20 @@ export default function SummarizePage() {
         mermaid.initialize({ startOnLoad: false, theme: "dark" })
         const { svg } = await mermaid.render("mindmap-" + Date.now(), mindmap)
         if (!cancelled) {
-          setMindmapSvg(svg)
+          if (typeof svg === "string" && svg.includes("Syntax error in text")) {
+            setMindmapSvg(null)
+            setMindmapError("Could not render mind map.")
+          } else {
+            setMindmapSvg(svg)
+          }
         }
+        removeMermaidErrorSvgs()
       } catch (e) {
         console.error("Mind map render error", e)
         if (!cancelled) {
           setMindmapError("Could not render mind map.")
         }
+        removeMermaidErrorSvgs()
       } finally {
         if (!cancelled) setMindmapRendering(false)
       }
@@ -426,9 +474,14 @@ export default function SummarizePage() {
       <div className="w-full max-w-4xl space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            Your AI study summarizer
+            <span
+              className="text-scramble"
+              data-scramble-text="Your AI study summarizer"
+            >
+              Your AI study summarizer
+            </span>
           </h1>
-          <p className="text-sm md:text-base text-slate-400 max-w-2xl">
+          <p className="text-sm md:text-base text-soft max-w-2xl">
             Paste text, drop in a PDF, or just share a website / YouTube link.
             We&apos;ll generate a clean, focused summary you can revise from.
           </p>
@@ -436,7 +489,7 @@ export default function SummarizePage() {
 
         <div className="grid md:grid-cols-2 gap-6 items-start">
           {/* Left: input modes */}
-          <div className="scroll-reveal rounded-2xl border border-slate-800 bg-slate-950/70 p-4 md:p-5 shadow-xl">
+          <div className="scroll-reveal card-soft rounded-2xl border border-slate-800 bg-slate-950/70 p-4 md:p-5 shadow-xl">
             <div className="flex gap-4 border-b border-slate-800 mb-4 overflow-x-auto">
               <button className={tabClass("text")} onClick={() => setMode("text")}>
                 ✍️ Text
@@ -446,6 +499,9 @@ export default function SummarizePage() {
               </button>
               <button className={tabClass("pdf")} onClick={() => setMode("pdf")}>
                 📄 PDF
+              </button>
+              <button className={tabClass("audio")} onClick={() => setMode("audio")}>
+                🎙️ Audio file
               </button>
             </div>
 
@@ -479,7 +535,7 @@ export default function SummarizePage() {
                 <input
                   type="file"
                   accept="application/pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
                   className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
                 />
                 <p className="text-[11px] text-slate-500">
@@ -488,18 +544,62 @@ export default function SummarizePage() {
               </div>
             )}
 
+            {mode === "audio" && (
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Upload a lecture, voice note, or podcast audio. We&apos;ll transcribe it first, then build your study pack.
+                </p>
+              </div>
+            )}
+
             <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-400">
               <span>Summary length</span>
-              <select
-                value={maxWords}
-                onChange={(e) => setMaxWords(Number(e.target.value))}
-                className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
-              >
-                <option value={100}>Short · 100 words</option>
-                <option value={200}>Medium · 200 words</option>
-                <option value={300}>Longer · 300 words</option>
-                <option value={400}>Detailed · 400 words</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={isCustomMaxWords ? "custom" : String(maxWords)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === "custom") {
+                      setIsCustomMaxWords(true)
+                      setMaxWords(customMaxWords || 200)
+                    } else {
+                      setIsCustomMaxWords(false)
+                      const num = Number(value)
+                      if (!Number.isNaN(num)) setMaxWords(num)
+                    }
+                  }}
+                  className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                >
+                  <option value="100">Short · 100 words</option>
+                  <option value="200">Medium · 200 words</option>
+                  <option value="300">Longer · 300 words</option>
+                  <option value="400">Detailed · 400 words</option>
+                  <option value="custom">Custom…</option>
+                </select>
+                {isCustomMaxWords && (
+                  <input
+                    type="number"
+                    min={50}
+                    max={1000}
+                    value={customMaxWords}
+                    onChange={(e) => {
+                      const num = Number(e.target.value)
+                      setCustomMaxWords(num)
+                      if (!Number.isNaN(num) && num > 0) {
+                        setMaxWords(num)
+                      }
+                    }}
+                    className="w-20 rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                    placeholder="e.g. 250"
+                  />
+                )}
+              </div>
             </div>
 
             {error && (
@@ -565,13 +665,18 @@ export default function SummarizePage() {
           </div>
 
           {/* Right: summary */}
-          <div className="scroll-reveal rounded-2xl border border-slate-800 bg-slate-950/70 p-4 md:p-5 shadow-xl min-h-[220px] space-y-4">
+          <div className="scroll-reveal card-soft rounded-2xl border border-slate-800 bg-slate-950/70 p-4 md:p-5 shadow-xl min-h-[220px] space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
+              <h2 className="card-heading text-lg font-semibold flex items-center gap-2">
                 <span>📘 Summary</span>
               </h2>
               {summary && (
-                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
+                <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+                  <div className="text-right text-[11px] leading-tight">
+                    <div className="text-slate-200 font-medium">{summaryWordCount} words</div>
+                    <div className="text-slate-400">Target {maxWords}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
                   <button
                     type="button"
                     onClick={isSpeaking ? stopSpeaking : startSpeaking}
@@ -593,6 +698,24 @@ export default function SummarizePage() {
                     className="physics-button rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-indigo-500 hover:text-indigo-200"
                   >
                     {copied ? "Copied" : "Copy"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!summary) return
+                      const blob = new Blob([summary], { type: "text/plain;charset=utf-8" })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      a.download = "ai-study-buddy-summary.txt"
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="physics-button rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-indigo-500 hover:text-indigo-200"
+                  >
+                    Text file
                   </button>
                   <button
                     type="button"
@@ -775,12 +898,13 @@ export default function SummarizePage() {
                   >
                     Export JSON
                   </button>
+                  </div>
                 </div>
               )}
             </div>
 
             {summary ? (
-              <div className="prose prose-invert prose-sm max-w-none text-slate-200">
+              <div className="prose prose-invert prose-sm max-w-none text-slate-200 summary-body">
                 <ReactMarkdown
                   components={{
                     h1: (props: HTMLAttributes<HTMLHeadingElement>) => (
@@ -817,7 +941,7 @@ export default function SummarizePage() {
 
             {keywords.length > 0 && (
               <div className="pt-1 border-t border-slate-800 mt-2">
-                <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <h3 className="card-heading text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
                   <span>🔑 Keywords</span>
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -835,14 +959,14 @@ export default function SummarizePage() {
 
             {mcqs.length > 0 && (
               <div className="pt-2 border-t border-slate-800 mt-2 max-h-64 overflow-y-auto pr-1">
-                <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <h3 className="card-heading text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
                   <span>📝 Practice MCQs</span>
                 </h3>
                 <div className="space-y-3 text-xs md:text-sm">
                   {mcqs.map((q, idx) => (
                     <div
                       key={idx}
-                      className="rounded-xl bg-slate-900/70 border border-slate-800 p-3 text-left"
+                      className="rounded-xl subcard-soft bg-slate-900/70 border border-slate-800 p-3 text-left"
                     >
                       <p className="font-medium text-slate-100 mb-1">
                         Q{idx + 1}. {q.question}
@@ -853,8 +977,8 @@ export default function SummarizePage() {
                           const isSelected = chosen === i
                           const isCorrect = opt === q.answer
                           const baseClasses =
-                            "w-full text-left rounded-lg border px-3 py-1.5 text-xs md:text-sm transition"
-                          let stateClasses = " border-slate-700 bg-slate-900/80 hover:border-slate-500"
+                            "w-full text-left rounded-lg border px-3 py-1.5 text-xs md:text-sm transition mcq-option-soft"
+                          let stateClasses = " hover:border-slate-500"
 
                           if (chosen != null) {
                             if (isSelected && isCorrect) {
@@ -906,13 +1030,13 @@ export default function SummarizePage() {
 
             {flashcards.length > 0 && (
               <div className="pt-2 border-t border-slate-800 mt-2">
-                <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <h3 className="card-heading text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
                   <span>📚 Flashcards</span>
                   <span className="text-[11px] font-normal text-slate-400">
                     {currentCardIndex + 1} / {flashcards.length}
                   </span>
                 </h3>
-                <div className="rounded-xl bg-slate-900/70 border border-slate-800 p-3 text-left space-y-3">
+                <div className="rounded-xl subcard-soft bg-slate-900/70 border border-slate-800 p-3 text-left space-y-3">
                   <div className="text-xs md:text-sm">
                     <p className="text-slate-400 mb-1">Prompt</p>
                     <p className="font-medium text-slate-100">
