@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
 import jwt from "jsonwebtoken"
@@ -21,7 +22,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
     }
 
-    const { text, maxWords } = await req.json()
+
+    const { text, maxWords, mood, targetLang } = await req.json()
 
     if (!text) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 })
@@ -32,13 +34,49 @@ export async function POST(req: Request) {
         ? maxWords
         : 200
 
+    const moodValue =
+      mood === "sleepy" || mood === "energized" || mood === "neutral" ? mood : "neutral"
+
+    let moodInstruction = ""
+    if (moodValue === "sleepy") {
+      moodInstruction =
+        "The student feels tired. Use very gentle, encouraging language, keep the difficulty on the easier side, avoid heavy jargon, and add small motivational touches.";
+    } else if (moodValue === "energized") {
+      moodInstruction =
+        "The student feels energized and motivated. You can go a bit deeper, include a few challenging insights, and invite the student to reflect with 1-2 short prompts.";
+    } else {
+      moodInstruction =
+        "Use a balanced, clear teaching style suitable for an average student with neutral energy.";
+    }
+
+    let languageInstruction = "";
+    if (targetLang && targetLang !== "en") {
+      const langMap: Record<string, string> = {
+        hi: "Hindi",
+        ur: "Urdu",
+        es: "Spanish",
+        de: "German",
+        fr: "French",
+        it: "Italian",
+        zh: "Chinese",
+        ar: "Arabic",
+        ru: "Russian",
+        ja: "Japanese",
+      };
+      const langName = langMap[targetLang] || targetLang;
+      languageInstruction = ` All output must be in ${langName}.`;
+    }
+
     const chat = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
         {
           role: "system",
           content:
-            "You are AI Study Buddy. You must reply with STRICT JSON only (no markdown, no backticks, no extra text). The JSON must be a single object with these fields: summary (string, clear explanation for a student, maximum " +
+            "You are AI Study Buddy. You must reply with STRICT JSON only (no markdown, no backticks, no extra text). " +
+            moodInstruction +
+            languageInstruction +
+            " The JSON must be a single object with these fields: summary (string, clear explanation for a student, maximum " +
             wordLimit +
             " words), keywords (array of 8-15 short important terms as strings), mcqs (array of objects with fields: question, options, answer, explanation), pptOutline (array of objects with fields: title and bullets where bullets is an array of short strings), mindmap (string), and flashcards (array of objects with fields: front and back where front is a short question or prompt and back is the concise answer or explanation). The mindmap MUST be a creative Mermaid mind-map using 'mindmap' syntax with: a single central node for the main topic, 3-6 big branches for major ideas, and 2-4 sub-branches each. Use short phrases, emojis for categories when helpful, and keep the diagram compact. Example shape (do NOT output this literally): mindmap -> (Topic) -> Branch -> Sub-idea. Respond with JUST the JSON object.",
         },

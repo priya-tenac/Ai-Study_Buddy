@@ -8,6 +8,9 @@ export type AppUser = {
   verification_token: string | null
   provider: "credentials" | "google" | null
   google_id: string | null
+  first_name?: string | null
+  last_name?: string | null
+  mobile?: string | null
 }
 
 export async function findUserByEmail(email: string): Promise<AppUser | null> {
@@ -26,6 +29,35 @@ export async function findUserByEmail(email: string): Promise<AppUser | null> {
   return data ?? null
 }
 
+export async function createCredentialsUser(params: {
+  email: string
+  passwordHash: string
+  firstName?: string | null
+  lastName?: string | null
+  mobile?: string | null
+}): Promise<void> {
+  const supabase = getSupabaseClient()
+  const { error } = await supabase.from("app_users").insert({
+    email: params.email,
+    password_hash: params.passwordHash,
+    verified: true,
+    verification_token: null,
+    provider: "credentials",
+    google_id: null,
+    first_name: params.firstName ?? null,
+    last_name: params.lastName ?? null,
+    mobile: params.mobile ?? null,
+  })
+
+  if (error) {
+    console.error("Supabase createCredentialsUser error", error)
+    if (error.code === "23505") {
+      throw new Error("DUPLICATE_EMAIL")
+    }
+    throw new Error(error.message || error.details || "Database error")
+  }
+}
+
 export async function findUserByVerificationToken(token: string): Promise<AppUser | null> {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
@@ -38,33 +70,7 @@ export async function findUserByVerificationToken(token: string): Promise<AppUse
     console.error("Supabase findUserByVerificationToken error", error)
     throw new Error("Database error")
   }
-
   return data ?? null
-}
-
-export async function createCredentialsUser(params: {
-  email: string
-  passwordHash: string
-  verificationToken: string
-}): Promise<void> {
-  const supabase = getSupabaseClient()
-  const { error } = await supabase.from("app_users").insert({
-    email: params.email,
-    password_hash: params.passwordHash,
-    verified: false,
-    verification_token: params.verificationToken,
-    provider: "credentials",
-    google_id: null,
-  })
-
-  if (error) {
-    console.error("Supabase createCredentialsUser error", error)
-    if (error.code === "23505") {
-      // unique_violation on email
-      throw new Error("DUPLICATE_EMAIL")
-    }
-    throw new Error("Database error")
-  }
 }
 
 export async function markUserVerifiedById(id: string): Promise<void> {
@@ -76,6 +82,19 @@ export async function markUserVerifiedById(id: string): Promise<void> {
 
   if (error) {
     console.error("Supabase markUserVerifiedById error", error)
+    throw new Error("Database error")
+  }
+}
+
+export async function setUserOtpTokenById(id: string, token: string | null): Promise<void> {
+  const supabase = getSupabaseClient()
+  const { error } = await supabase
+    .from("app_users")
+    .update({ verification_token: token })
+    .eq("id", id)
+
+  if (error) {
+    console.error("Supabase setUserOtpTokenById error", error)
     throw new Error("Database error")
   }
 }

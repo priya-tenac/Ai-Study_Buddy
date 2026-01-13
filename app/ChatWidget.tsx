@@ -109,7 +109,7 @@ export default function ChatWidget() {
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {isOpen && (
-        <div className="w-80 sm:w-96 rounded-3xl border border-slate-800 bg-slate-950/95 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="w-72 sm:w-80 md:w-96 rounded-3xl border border-slate-800 bg-slate-950/95 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-gradient-to-r from-indigo-500/20 via-sky-500/10 to-transparent">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-full bg-indigo-500/80 flex items-center justify-center text-sm">

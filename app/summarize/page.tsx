@@ -4,7 +4,8 @@ import ReactMarkdown, { type Components } from "react-markdown"
 import PptxGenJS from "pptxgenjs"
 import { useRouter } from "next/navigation"
 
-type Mode = "text" | "url" | "pdf" | "audio"
+type Mode = "text" | "url" | "pdf" | "audio" | "image"
+type Mood = "sleepy" | "neutral" | "energized"
 
 type Mcq = {
   question: string
@@ -29,16 +30,95 @@ type StudySession = {
   mode: Mode
   title: string
   summaryPreview: string
+  publicId?: string
+  isFavorite?: boolean
+}
+
+const LANGUAGE_OPTIONS = [
+  { code: "en", label: "English" },
+  { code: "hi", label: "Hindi" },
+  { code: "ur", label: "Urdu" },
+  { code: "es", label: "Spanish" },
+  { code: "de", label: "German" },
+  { code: "fr", label: "French" },
+  { code: "it", label: "Italian" },
+  { code: "zh", label: "Chinese" },
+  { code: "ar", label: "Arabic" },
+  { code: "ru", label: "Russian" },
+  { code: "ja", label: "Japanese" },
+]
+
+const STORAGE_KEY_PREFIX = "ai-study-buddy:user:"
+const CONTEXT_STORAGE_KEY = "ai-study-buddy:context"
+
+function decodeEmailFromToken(token: string | null): string | null {
+  if (!token) return null
+  try {
+    const [, payload] = token.split(".")
+    if (!payload) return null
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/")
+    const json = atob(base64)
+    const data = JSON.parse(json)
+    return typeof data.email === "string" ? data.email : null
+  } catch {
+    return null
+  }
+}
+
+function getPublicLink(publicId: string) {
+  if (!publicId) return ""
+  if (typeof window === "undefined") return ""
+  return `${window.location.origin}/summarize/shared/${publicId}`
+}
+
+function toggleFavorite(sessionId: string) {
+  if (typeof window === "undefined") return
+  const token = window.localStorage.getItem("token")
+  const email = decodeEmailFromToken(token)
+  if (!email) return
+  const key = STORAGE_KEY_PREFIX + email
+  const raw = window.localStorage.getItem(key)
+  const parsed = raw ? JSON.parse(raw) : {}
+  const sessions: StudySession[] = Array.isArray(parsed.sessions) ? parsed.sessions : []
+  const idx = sessions.findIndex(s => s.id === sessionId)
+  if (idx === -1) return
+  sessions[idx].isFavorite = !sessions[idx].isFavorite
+  window.localStorage.setItem(key, JSON.stringify({ ...parsed, sessions }))
 }
 
 export default function SummarizePage() {
   const router = useRouter()
   const [mode, setMode] = useState<Mode>("text")
+  const [mood, setMood] = useState<Mood>("neutral")
   const [text, setText] = useState("")
   const [url, setUrl] = useState("")
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [summary, setSummary] = useState("")
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [ocrText, setOcrText] = useState("")
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [history, setHistory] = useState<StudySession[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+    // Load summary history for the logged-in user
+    useEffect(() => {
+      if (typeof window === "undefined") return
+      const token = window.localStorage.getItem("token")
+      if (!token) return
+      const email = decodeEmailFromToken(token)
+      if (!email) return
+      const key = STORAGE_KEY_PREFIX + email
+      try {
+        const raw = window.localStorage.getItem(key)
+        const parsed = raw ? JSON.parse(raw) : {}
+        const sessions: StudySession[] = Array.isArray(parsed.sessions) ? parsed.sessions : []
+        setHistory(sessions.reverse())
+      } catch {
+        setHistory([])
+      }
+    }, [summary])
+  const [targetLang, setTargetLang] = useState("en")
+  // ...compare summaries feature removed...
   const [keywords, setKeywords] = useState<string[]>([])
   const [mcqs, setMcqs] = useState<Mcq[]>([])
   const [pptOutline, setPptOutline] = useState<SlideOutline[]>([])
@@ -61,10 +141,11 @@ export default function SummarizePage() {
   const [isCustomMaxWords, setIsCustomMaxWords] = useState(false)
   const [customMaxWords, setCustomMaxWords] = useState<number>(200)
 
-  const STORAGE_KEY_PREFIX = "ai-study-buddy:user:"
-  const CONTEXT_STORAGE_KEY = "ai-study-buddy:context"
+// Storage key prefix for user data (must be top-level for helpers)
+const STORAGE_KEY_PREFIX = "ai-study-buddy:user:"
+const CONTEXT_STORAGE_KEY = "ai-study-buddy:context"
 
-  const summarizeText = async (content: string, wordLimit: number) => {
+  const summarizeText = async (content: string, wordLimit: number, moodValue: Mood, lang: string) => {
     const token =
       typeof window !== "undefined" ? window.localStorage.getItem("token") : null
 
@@ -74,7 +155,7 @@ export default function SummarizePage() {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ text: content, maxWords: wordLimit }),
+      body: JSON.stringify({ text: content, maxWords: wordLimit, mood: moodValue, targetLang: lang }),
     })
 
     const data = await res.json()
@@ -130,7 +211,47 @@ export default function SummarizePage() {
       mode,
       title: sourceTitle.slice(0, 80),
       summaryPreview: summaryText.replace(/\s+/g, " ").slice(0, 120),
+      publicId: Math.random().toString(36).slice(2, 10), // simple unique public id
+      isFavorite: false,
     }
+
+// Helper: decode email from JWT token
+function decodeEmailFromToken(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(base64);
+    const data = JSON.parse(json);
+    return typeof data.email === "string" ? data.email : null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper: get public link for a summary
+function getPublicLink(publicId: string) {
+  if (!publicId) return "";
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/summarize/shared/${publicId}`;
+}
+
+// Helper: toggle favorite for a summary
+function toggleFavorite(sessionId: string) {
+  if (typeof window === "undefined") return;
+  const token = window.localStorage.getItem("token");
+  const email = decodeEmailFromToken(token);
+  if (!email) return;
+  const key = STORAGE_KEY_PREFIX + email;
+  const raw = window.localStorage.getItem(key);
+  const parsed = raw ? JSON.parse(raw) : {};
+  const sessions: StudySession[] = Array.isArray(parsed.sessions) ? parsed.sessions : [];
+  const idx = sessions.findIndex(s => s.id === sessionId);
+  if (idx === -1) return;
+  sessions[idx].isFavorite = !sessions[idx].isFavorite;
+  window.localStorage.setItem(key, JSON.stringify({ ...parsed, sessions }));
+}
 
     const updated = {
       plans: Array.isArray(existing.plans) ? existing.plans : [],
@@ -196,6 +317,27 @@ export default function SummarizePage() {
         if (!text.trim()) throw new Error("Please paste some text to summarize.")
         baseText = text
         sourceTitle = text.trim().slice(0, 80) || "Text input"
+      } else if (mode === "image") {
+        if (!imageFile) throw new Error("Please upload an image file.")
+        setOcrLoading(true)
+        const formData = new FormData()
+        formData.append("file", imageFile)
+        const token = typeof window !== "undefined" ? window.localStorage.getItem("token") : null
+        const res = await fetch("/api/ocr", {
+          method: "POST",
+          body: formData,
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+        const data = await res.json()
+        setOcrLoading(false)
+        if (!res.ok) {
+          throw new Error(data.error || "Could not extract text from image.")
+        }
+        setOcrText(data.text)
+        baseText = data.text as string
+        sourceTitle = imageFile.name || "Image upload"
       } else if (mode === "url") {
         if (!url.trim()) throw new Error("Please enter a website or YouTube URL.")
         const token =
@@ -254,7 +396,41 @@ export default function SummarizePage() {
         sourceTitle = audioFile.name || "Audio upload"
       }
 
-      const result = await summarizeText(baseText, maxWords)
+      // Avoid sending extremely large payloads to the summarization API
+      const MAX_INPUT_CHARS = 20000
+      if (baseText.length > MAX_INPUT_CHARS) {
+        baseText = baseText.slice(0, MAX_INPUT_CHARS)
+      }
+
+      let result
+
+      if (mode === "pdf" && baseText.length > 6000) {
+        // For long PDFs, summarize in chunks so more of the book is covered.
+        const CHUNK_SIZE = 6000
+        const MAX_CHUNKS = 8
+        const chunks: string[] = []
+
+        for (let i = 0; i < baseText.length && chunks.length < MAX_CHUNKS; i += CHUNK_SIZE) {
+          chunks.push(baseText.slice(i, i + CHUNK_SIZE))
+        }
+
+        const partialSummaries: string[] = []
+
+        for (const chunk of chunks) {
+          const partial = await summarizeText(chunk, Math.min(maxWords, 200), mood, targetLang)
+          partialSummaries.push(partial.summary)
+        }
+
+        const combined = partialSummaries.join("\n\n")
+        result = await summarizeText(combined, maxWords, mood, targetLang)
+      } else {
+        // For other modes or shorter PDFs, just cap extremely long input once.
+        const MAX_INPUT_CHARS = 20000
+        if (baseText.length > MAX_INPUT_CHARS) {
+          baseText = baseText.slice(0, MAX_INPUT_CHARS)
+        }
+        result = await summarizeText(baseText, maxWords, mood, targetLang)
+      }
       setSummary(result.summary)
       setKeywords(result.keywords || [])
       setMcqs(result.mcqs || [])
@@ -472,6 +648,51 @@ export default function SummarizePage() {
       style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}
     >
       <div className="w-full max-w-4xl space-y-6">
+        <div className="flex gap-2 mb-1 flex-wrap">
+          {/* Compare summaries feature removed */}
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="physics-button inline-flex items-center gap-2 rounded-full border border-indigo-500/70 bg-indigo-500 px-3.5 py-1.5 text-xs font-medium text-slate-50 shadow-md shadow-indigo-500/30 transition-transform duration-150 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/40 active:translate-y-[1px]"
+          >
+            <span className="text-sm">←</span>
+            <span>Back to dashboard</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="physics-button inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-slate-200 shadow-md shadow-slate-900/30 transition-transform duration-150 hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-900/40 active:translate-y-[1px]"
+          >
+            <span>🕑</span>
+            <span>{showHistory ? "Hide" : "Show"} History</span>
+          </button>
+        </div>
+                {showHistory && (
+                  <div className="mb-4 card-soft rounded-2xl p-4 shadow-[0_8px_32px_rgba(15,23,42,0.10)]">
+                    <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                      <span>🕑</span> <span>Summary History</span>
+                    </h2>
+                    {history.length === 0 ? (
+                      <p className="text-sm text-slate-400">No summaries found.</p>
+                    ) : (
+                      <ul className="divide-y divide-slate-800">
+                        {history.map((s) => (
+                          <li key={s.id} className="py-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                            <div>
+                              <div className="font-medium text-slate-200 text-sm flex items-center gap-2">
+                                {s.title}
+                                {s.isFavorite && <span title="Favorite" className="text-amber-400">★</span>}
+                              </div>
+                              <div className="text-xs text-slate-400">{new Date(s.createdAt).toLocaleString()}</div>
+                              <div className="text-xs text-slate-300 mt-1 max-w-xs truncate">{s.summaryPreview}</div>
+                            </div>
+                            
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
         <div className="space-y-2">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
             <span
@@ -485,120 +706,201 @@ export default function SummarizePage() {
             Paste text, drop in a PDF, or just share a website / YouTube link.
             We&apos;ll generate a clean, focused summary you can revise from.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] md:text-xs text-slate-400">
+            <span className="uppercase tracking-[0.18em] text-slate-500">Mood</span>
+            <div className="inline-flex rounded-full bg-slate-900/70 p-1 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setMood("sleepy")}
+                className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition ${
+                  mood === "sleepy"
+                    ? "bg-indigo-500 text-slate-50 shadow-sm shadow-indigo-500/40"
+                    : "text-slate-300 hover:text-slate-50"
+                }`}
+              >
+                <span>😴</span>
+                <span className="hidden sm:inline">Gentle &amp; simple</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMood("neutral")}
+                className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition ${
+                  mood === "neutral"
+                    ? "bg-indigo-500 text-slate-50 shadow-sm shadow-indigo-500/40"
+                    : "text-slate-300 hover:text-slate-50"
+                }`}
+              >
+                <span>😐</span>
+                <span className="hidden sm:inline">Balanced</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMood("energized")}
+                className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition ${
+                  mood === "energized"
+                    ? "bg-indigo-500 text-slate-50 shadow-sm shadow-indigo-500/40"
+                    : "text-slate-300 hover:text-slate-50"
+                }`}
+              >
+                <span>😄</span>
+                <span className="hidden sm:inline">Challenge me</span>
+              </button>
+            </div>
+            <span className="text-[10px] text-slate-500">
+              AI adjusts explanation style and depth to your mood.
+            </span>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 items-start">
           {/* Left: input modes */}
-          <div className="scroll-reveal card-soft rounded-2xl border border-slate-800 bg-slate-950/70 p-4 md:p-5 shadow-xl">
-            <div className="flex gap-4 border-b border-slate-800 mb-4 overflow-x-auto">
-              <button className={tabClass("text")} onClick={() => setMode("text")}>
-                ✍️ Text
-              </button>
-              <button className={tabClass("url")} onClick={() => setMode("url")}>
-                🔗 URL / YouTube
-              </button>
-              <button className={tabClass("pdf")} onClick={() => setMode("pdf")}>
-                📄 PDF
-              </button>
-              <button className={tabClass("audio")} onClick={() => setMode("audio")}>
-                🎙️ Audio file
-              </button>
+          <div className="scroll-reveal card-soft rounded-2xl p-4 md:p-5 shadow-[0_14px_45px_rgba(15,23,42,0.08)]">
+            <div className="flex flex-wrap gap-2 md:gap-4 border-b border-slate-800 mb-4">
+              <button className={tabClass("text")} onClick={() => setMode("text")}>Text</button>
+              <button className={tabClass("url")} onClick={() => setMode("url")}>URL</button>
+              <button className={tabClass("pdf")} onClick={() => setMode("pdf")}>PDF</button>
+              <button className={tabClass("audio")} onClick={() => setMode("audio")}>Audio</button>
+              <button className={tabClass("image")} onClick={() => setMode("image")}>Image</button>
+            </div>
+            
+            <div className="space-y-3">
+                  {mode === "text" && (
+                    <textarea
+                      rows={8}
+                      className="input-soft text-sm"
+                      placeholder="Paste any notes, article, or explanation you want summarized..."
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                    />
+                  )}
+                  {mode === "url" && (
+                    <>
+                      <input
+                        type="text"
+                        className="input-soft text-sm"
+                        placeholder="Paste a website or YouTube URL..."
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                      />
+                      <p className="text-[11px] text-slate-500">
+                        YouTube links use the video title as a topic and generate an explanation with examples.
+                      </p>
+                    </>
+                  )}
+                  {mode === "pdf" && (
+                    <>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
+                      />
+                      <p className="text-[11px] text-slate-500">
+                        We&apos;ll extract text from your PDF on the server and then summarize it.
+                      </p>
+                    </>
+                  )}
+                  {mode === "audio" && (
+                    <>
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
+                      />
+                      <p className="text-[11px] text-slate-500">
+                        Upload a lecture, voice note, or podcast audio. We&apos;ll transcribe it first, then build your study pack.
+                      </p>
+                    </>
+                  )}
+                  {mode === "image" && (
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
+                      />
+                      {ocrLoading && <p className="text-xs text-slate-400">Extracting text from image…</p>}
+                      {ocrText && (
+                        <div className="bg-slate-900/70 rounded-lg p-2 text-xs text-slate-200 mt-2">
+                          <div className="mb-1 font-semibold text-indigo-300">Extracted Text:</div>
+                          <div className="whitespace-pre-line max-h-32 overflow-y-auto">{ocrText}</div>
+                        </div>
+                      )}
+                      <p className="text-[11px] text-slate-500">
+                        Upload an image (screenshot, photo, scanned doc). We'll extract the text and summarize it.
+                      </p>
+                      <div className="mt-2 rounded-lg border border-indigo-700 bg-slate-900/60 p-2 text-xs text-indigo-200">
+                        <div><b>OCR Limits & Features:</b></div>
+                        <ul className="list-disc ml-4">
+                          <li>File size limit: <b>1 MB</b></li>
+                          <li>PDF page limit: <b>3</b></li>
+                          <li>Searchable PDF creation: <b>Yes (with watermark)</b></li>
+                          <li>Speed: <b>Fast</b></li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
             </div>
 
-            {mode === "text" && (
-              <textarea
-                rows={8}
-                className="w-full rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
-                placeholder="Paste any notes, article, or explanation you want summarized..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-              />
-            )}
-
-            {mode === "url" && (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
-                  placeholder="Paste a website or YouTube URL..."
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                />
-                <p className="text-[11px] text-slate-500">
-                  YouTube links use the video title as a topic and generate an explanation with examples.
-                </p>
-              </div>
-            )}
-
-            {mode === "pdf" && (
-              <div className="space-y-3">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
-                />
-                <p className="text-[11px] text-slate-500">
-                  We&apos;ll extract text from your PDF on the server and then summarize it.
-                </p>
-              </div>
-            )}
-
-            {mode === "audio" && (
-              <div className="space-y-3">
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400 cursor-pointer"
-                />
-                <p className="text-[11px] text-slate-500">
-                  Upload a lecture, voice note, or podcast audio. We&apos;ll transcribe it first, then build your study pack.
-                </p>
-              </div>
-            )}
-
-            <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-400">
-              <span>Summary length</span>
-              <div className="flex items-center gap-2">
-                <select
-                  value={isCustomMaxWords ? "custom" : String(maxWords)}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (value === "custom") {
-                      setIsCustomMaxWords(true)
-                      setMaxWords(customMaxWords || 200)
-                    } else {
-                      setIsCustomMaxWords(false)
-                      const num = Number(value)
-                      if (!Number.isNaN(num)) setMaxWords(num)
-                    }
-                  }}
-                  className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
-                >
-                  <option value="100">Short · 100 words</option>
-                  <option value="200">Medium · 200 words</option>
-                  <option value="300">Longer · 300 words</option>
-                  <option value="400">Detailed · 400 words</option>
-                  <option value="custom">Custom…</option>
-                </select>
-                {isCustomMaxWords && (
-                  <input
-                    type="number"
-                    min={50}
-                    max={1000}
-                    value={customMaxWords}
+            <div className="mt-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
+                <span>Summary length</span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={isCustomMaxWords ? "custom" : String(maxWords)}
                     onChange={(e) => {
-                      const num = Number(e.target.value)
-                      setCustomMaxWords(num)
-                      if (!Number.isNaN(num) && num > 0) {
-                        setMaxWords(num)
+                      const value = e.target.value
+                      if (value === "custom") {
+                        setIsCustomMaxWords(true)
+                        setMaxWords(customMaxWords || 200)
+                      } else {
+                        setIsCustomMaxWords(false)
+                        const num = Number(value)
+                        if (!Number.isNaN(num)) setMaxWords(num)
                       }
                     }}
-                    className="w-20 rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
-                    placeholder="e.g. 250"
-                  />
-                )}
+                    className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                  >
+                    <option value="100">Short · 100 words</option>
+                    <option value="200">Medium · 200 words</option>
+                    <option value="300">Longer · 300 words</option>
+                    <option value="400">Detailed · 400 words</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                  {isCustomMaxWords && (
+                    <input
+                      type="number"
+                      min={50}
+                      max={1000}
+                      value={customMaxWords}
+                      onChange={(e) => {
+                        const num = Number(e.target.value)
+                        setCustomMaxWords(num)
+                        if (!Number.isNaN(num) && num > 0) {
+                          setMaxWords(num)
+                        }
+                      }}
+                      className="w-20 input-soft text-xs"
+                      placeholder="e.g. 250"
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
+                <span>Summary language</span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={targetLang}
+                    onChange={(e) => setTargetLang(e.target.value)}
+                    className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                  >
+                    {LANGUAGE_OPTIONS.map((lang) => (
+                      <option key={lang.code} value={lang.code}>{lang.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -609,7 +911,7 @@ export default function SummarizePage() {
             )}
 
             {summary && (
-              <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] text-slate-300 space-y-2">
+              <div className="mt-4 rounded-xl subcard-soft px-3 py-2 text-[11px] text-soft space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium text-slate-200">🎧 Podcast mode</span>
                   {isSpeaking && (
@@ -641,7 +943,7 @@ export default function SummarizePage() {
                       <select
                         value={selectedVoice}
                         onChange={(e) => setSelectedVoice(e.target.value)}
-                        className="rounded-lg border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 max-w-[180px] truncate"
+                        className="input-soft max-w-[180px] truncate text-[11px]"
                       >
                         {voices.map((v) => (
                           <option key={v.name} value={v.name}>
@@ -665,25 +967,26 @@ export default function SummarizePage() {
           </div>
 
           {/* Right: summary */}
-          <div className="scroll-reveal card-soft rounded-2xl border border-slate-800 bg-slate-950/70 p-4 md:p-5 shadow-xl min-h-[220px] space-y-4">
+          <div className="scroll-reveal card-soft rounded-2xl p-4 md:p-5 shadow-[0_14px_45px_rgba(15,23,42,0.08)] min-h-[220px] space-y-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="card-heading text-lg font-semibold flex items-center gap-2">
                 <span>📘 Summary</span>
               </h2>
               {summary && (
                 <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2.5">
-                  <div className="text-right text-[11px] leading-tight">
-                    <div className="text-slate-200 font-medium">{summaryWordCount} words</div>
-                    <div className="text-slate-400">Target {maxWords}</div>
+                    <div className="text-right text-[11px] leading-tight text-soft">
+                      <div className="font-medium" style={{ color: "var(--foreground)" }}>{summaryWordCount} words</div>
+                      <div>Target {maxWords}</div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
                   <button
                     type="button"
                     onClick={isSpeaking ? stopSpeaking : startSpeaking}
-                    className="physics-button rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-indigo-500 hover:text-indigo-200"
+                    className="physics-button rounded-lg border border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-800 hover:border-indigo-400 hover:text-indigo-700"
                   >
                     {isSpeaking ? "Stop audio" : "Listen"}
                   </button>
+                  {/* Download Audio button removed as requested */}
                   <button
                     type="button"
                     onClick={async () => {
@@ -695,7 +998,7 @@ export default function SummarizePage() {
                         // ignore clipboard errors
                       }
                     }}
-                    className="physics-button rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-indigo-500 hover:text-indigo-200"
+                    className="physics-button rounded-lg border border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-800 hover:border-indigo-400 hover:text-indigo-700"
                   >
                     {copied ? "Copied" : "Copy"}
                   </button>
@@ -713,7 +1016,7 @@ export default function SummarizePage() {
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="physics-button rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-indigo-500 hover:text-indigo-200"
+                    className="physics-button rounded-lg border border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-800 hover:border-indigo-400 hover:text-indigo-700"
                   >
                     Text file
                   </button>
@@ -958,17 +1261,17 @@ export default function SummarizePage() {
             )}
 
             {mcqs.length > 0 && (
-              <div className="pt-2 border-t border-slate-800 mt-2 max-h-64 overflow-y-auto pr-1">
-                <h3 className="card-heading text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+              <div className="pt-2 border-t border-slate-200 mt-2 max-h-64 overflow-y-auto pr-1">
+                <h3 className="card-heading text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
                   <span>📝 Practice MCQs</span>
                 </h3>
                 <div className="space-y-3 text-xs md:text-sm">
                   {mcqs.map((q, idx) => (
                     <div
                       key={idx}
-                      className="rounded-xl subcard-soft bg-slate-900/70 border border-slate-800 p-3 text-left"
+                      className="rounded-xl subcard-soft p-3 text-left shadow-[0_10px_30px_rgba(15,23,42,0.06)]"
                     >
-                      <p className="font-medium text-slate-100 mb-1">
+                      <p className="font-medium mb-1" style={{ color: "var(--foreground)" }}>
                         Q{idx + 1}. {q.question}
                       </p>
                       <div className="space-y-1">
@@ -976,20 +1279,26 @@ export default function SummarizePage() {
                           const chosen = selectedOptions[idx]
                           const isSelected = chosen === i
                           const isCorrect = opt === q.answer
-                          const baseClasses =
-                            "w-full text-left rounded-lg border px-3 py-1.5 text-xs md:text-sm transition mcq-option-soft"
+                          let baseClasses =
+                            "w-full text-left rounded-lg border px-3 py-1.5 text-xs md:text-sm transition-all duration-150"
                           let stateClasses = " hover:border-slate-500"
 
                           if (chosen != null) {
                             if (isSelected && isCorrect) {
                               stateClasses =
-                                " border-emerald-500 bg-emerald-500/10 text-emerald-100"
+                                " border-emerald-500 bg-emerald-500/10 text-emerald-900 ring-2 ring-emerald-400/70 scale-[1.01] shadow-[0_14px_40px_rgba(16,185,129,0.35)]"
                             } else if (isSelected && !isCorrect) {
-                              stateClasses = " border-red-500 bg-red-500/10 text-red-100"
+                              stateClasses =
+                                " border-red-500 bg-red-500/10 text-red-900 ring-2 ring-red-400/70 scale-[1.01] shadow-[0_14px_40px_rgba(248,113,113,0.3)]"
                             } else if (isCorrect) {
                               stateClasses =
-                                " border-emerald-500/60 bg-emerald-500/5 text-emerald-100"
+                                " border-emerald-500/60 bg-emerald-500/5 text-emerald-900 ring-1 ring-emerald-400/60"
                             }
+                          }
+
+                          // Keep gradient mcq-option-soft only for neutral options
+                          if (chosen == null || (!isCorrect && !isSelected)) {
+                            baseClasses += " mcq-option-soft"
                           }
 
                           return (
@@ -1006,22 +1315,22 @@ export default function SummarizePage() {
                           )
                         })}
                       </div>
-                      {selectedOptions[idx] != null && (
-                        <div className="mt-1 text-[11px]">
-                          {q.options[selectedOptions[idx] ?? 0] === q.answer ? (
-                            <p className="text-emerald-300">
-                              Correct! <span className="font-semibold">{q.answer}</span>
-                            </p>
-                          ) : (
-                            <p className="text-red-300">
-                              Incorrect. Correct answer: {q.answer}
-                            </p>
+                          {selectedOptions[idx] != null && (
+                            <div className="mt-1 text-[11px]">
+                              {q.options[selectedOptions[idx] ?? 0] === q.answer ? (
+                                <p className="text-emerald-600">
+                                  Correct! <span className="font-semibold">{q.answer}</span>
+                                </p>
+                              ) : (
+                                <p className="text-red-600">
+                                  Incorrect. Correct answer: {q.answer}
+                                </p>
+                              )}
+                              {q.explanation && (
+                                <p className="mt-0.5 text-soft">Why: {q.explanation}</p>
+                              )}
+                            </div>
                           )}
-                          {q.explanation && (
-                            <p className="mt-0.5 text-slate-400">Why: {q.explanation}</p>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1029,17 +1338,17 @@ export default function SummarizePage() {
             )}
 
             {flashcards.length > 0 && (
-              <div className="pt-2 border-t border-slate-800 mt-2">
-                <h3 className="card-heading text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+              <div className="pt-2 border-t border-slate-200 mt-2">
+                <h3 className="card-heading text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
                   <span>📚 Flashcards</span>
-                  <span className="text-[11px] font-normal text-slate-400">
+                  <span className="text-[11px] font-normal text-soft">
                     {currentCardIndex + 1} / {flashcards.length}
                   </span>
                 </h3>
-                <div className="rounded-xl subcard-soft bg-slate-900/70 border border-slate-800 p-3 text-left space-y-3">
+                <div className="rounded-xl subcard-soft p-3 text-left space-y-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
                   <div className="text-xs md:text-sm">
-                    <p className="text-slate-400 mb-1">Prompt</p>
-                    <p className="font-medium text-slate-100">
+                    <p className="text-soft mb-1">Prompt</p>
+                    <p className="font-medium" style={{ color: "var(--foreground)" }}>
                       {flashcards[currentCardIndex]?.front}
                     </p>
                   </div>
@@ -1047,18 +1356,18 @@ export default function SummarizePage() {
                     <button
                       type="button"
                       onClick={() => setShowCardBack((v) => !v)}
-                      className="physics-button mb-1 rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-[11px] text-slate-200 hover:border-indigo-500 hover:text-indigo-200"
+                      className="physics-button mb-1 rounded-lg border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] text-slate-800 hover:border-indigo-400 hover:text-indigo-700"
                     >
                       {showCardBack ? "Hide answer" : "Show answer"}
                     </button>
                     {showCardBack && (
-                      <p className="mt-1 text-slate-200">
+                      <p className="mt-1 text-soft">
                         {flashcards[currentCardIndex]?.back}
                       </p>
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span className="text-slate-400">How well did you know this?</span>
+                    <span className="text-soft">How well did you know this?</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -1073,7 +1382,7 @@ export default function SummarizePage() {
                         })
                         setShowCardBack(false)
                       }}
-                      className="physics-button rounded-lg border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-red-100 hover:border-red-400"
+                      className="physics-button rounded-lg border border-red-500/70 bg-red-50 px-3 py-1.5 text-red-700 hover:border-red-500"
                     >
                       Again
                     </button>
@@ -1085,7 +1394,7 @@ export default function SummarizePage() {
                         )
                         setShowCardBack(false)
                       }}
-                      className="physics-button rounded-lg border border-amber-500/60 bg-amber-500/10 px-3 py-1.5 text-amber-100 hover:border-amber-400"
+                      className="physics-button rounded-lg border border-amber-400 bg-amber-50 px-3 py-1.5 text-amber-700 hover:border-amber-500"
                     >
                       Good
                     </button>
@@ -1097,7 +1406,7 @@ export default function SummarizePage() {
                         )
                         setShowCardBack(false)
                       }}
-                      className="physics-button rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-3 py-1.5 text-emerald-100 hover:border-emerald-400"
+                      className="physics-button rounded-lg border border-emerald-500 bg-emerald-50 px-3 py-1.5 text-emerald-700 hover:border-emerald-600"
                     >
                       Easy
                     </button>
@@ -1147,9 +1456,10 @@ export default function SummarizePage() {
                 )}
               </div>
             )}
+
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

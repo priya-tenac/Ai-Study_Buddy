@@ -1,12 +1,13 @@
 import "./globals.css"
-import type { Metadata } from "next"
-import ThemeToggle from "./ThemeToggle"
+import type { Metadata, Viewport } from "next"
 import MouseGlow from "./MouseGlow"
 import PhysicsButtons from "./PhysicsButtons"
 import ScrollReveal from "./ScrollReveal"
 import TextScramble from "./TextScramble"
 import AnimatedSvgLines from "./AnimatedSvgLines"
 import ChatWidget from "./ChatWidget"
+import Navbar from "./Navbar"
+import Footer from "./Footer"
 
 export const metadata: Metadata = {
   title: "AI STUDY BUDDY",
@@ -14,6 +15,11 @@ export const metadata: Metadata = {
   icons: {
     icon: "/globe.svg",
   },
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 }
 
 export default function RootLayout({
@@ -29,11 +35,10 @@ export default function RootLayout({
         <ScrollReveal />
         <TextScramble />
         <AnimatedSvgLines />
-        <div className="fixed right-4 top-4 z-50">
-          <ThemeToggle />
-        </div>
         <ChatWidget />
-        {children}
+        <Navbar />
+        <main className="min-h-screen">{children}</main>
+        <Footer />
       </body>
     </html>
   )

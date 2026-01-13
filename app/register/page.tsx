@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function RegisterPage() {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
+  const [mobile, setMobile] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [show, setShow] = useState(false)
@@ -35,7 +38,13 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          firstName,
+          lastName,
+          mobile,
+        }),
       })
 
       const data = await res.json()
@@ -146,6 +155,30 @@ export default function RegisterPage() {
                 )}
 
                 <div className="space-y-4">
+                  {/* Name row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-300">First name</label>
+                      <input
+                        type="text"
+                        placeholder="Alex"
+                        className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-300">Last name</label>
+                      <input
+                        type="text"
+                        placeholder="Taylor"
+                        className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
                   {/* Email */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-slate-300">Email</label>
@@ -156,6 +189,21 @@ export default function RegisterPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
+                  </div>
+
+                  {/* Mobile */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300">Mobile number</label>
+                    <input
+                      type="tel"
+                      placeholder="+1 555 123 4567"
+                      className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Optional, used for account context and support only.
+                    </p>
                   </div>
 
                   {/* Password + Tooltip */}

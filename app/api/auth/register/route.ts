@@ -1,11 +1,9 @@
 import bcrypt from "bcryptjs"
-import crypto from "crypto"
 import { NextResponse } from "next/server"
 import { createCredentialsUser, findUserByEmail } from "../user-repository"
-import { sendVerificationEmail } from "../email"
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json()
+  const { email, password, firstName, lastName, mobile } = await req.json()
 
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
@@ -22,12 +20,13 @@ export async function POST(req: Request) {
   }
 
   const hashed = await bcrypt.hash(password, 10)
-  const verificationToken = crypto.randomBytes(32).toString("hex")
   try {
     await createCredentialsUser({
       email,
       passwordHash: hashed,
-      verificationToken,
+      firstName: firstName || null,
+      lastName: lastName || null,
+      mobile: mobile || null,
     })
   } catch (err: any) {
     if (err instanceof Error && err.message === "DUPLICATE_EMAIL") {
@@ -37,13 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 
-  console.log("REGISTER: user stored (unverified)", { email })
+  console.log("REGISTER: user stored", { email })
 
-  try {
-    await sendVerificationEmail(email, verificationToken)
-  } catch (err) {
-    console.error("Error sending verification email", err)
-  }
-
-  return NextResponse.json({ success: true, message: "Account created. Check your email to verify your address." })
+  return NextResponse.json({ success: true, message: "Account created. You can now sign in." })
 }
