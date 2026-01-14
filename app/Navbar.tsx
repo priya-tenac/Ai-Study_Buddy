@@ -24,9 +24,14 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 border-b border-slate-900/80 bg-slate-950/80 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-xs md:text-sm">
         <Link href="/" className="flex items-center gap-2">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-500/30 text-lg">
-            🎓
-          </span>
+          <img
+            src="/globe.svg"
+            alt="Logo"
+            width={32}
+            height={32}
+            className="inline-block rounded-xl bg-indigo-500/30"
+            style={{ minWidth: 32, minHeight: 32 }}
+          />
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold tracking-tight text-slate-100 md:text-base">
               AI Study Buddy
