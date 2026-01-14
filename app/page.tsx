@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { gsap } from "gsap"
 import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
+import ContactForm from "./ContactForm"
 
 const heroBlocks = [
   "PDFs",
@@ -536,15 +537,15 @@ export default function Home() {
           
       {/* USER REVIEWS SECTION - BEAUTIFIED */}
       <section className="relative mx-auto max-w-6xl px-4 pb-20">
-        <div className="scroll-reveal rounded-3xl bg-[#11182a] p-8 md:p-12 shadow-[0_14px_45px_rgba(15,23,42,0.18)] border border-[#232b45]">
+        <div className="scroll-reveal rounded-3xl card-soft p-8 md:p-12 shadow-[0_14px_45px_rgba(15,23,42,0.18)] border">
           <div className="space-y-3 text-center">
-            <p className="text-xs uppercase tracking-[0.25em] text-[#7b89b6] font-semibold">WHAT STUDENTS SAY</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">Real reviews from real users</h2>
-            <p className="mx-auto max-w-2xl text-base text-[#b2b8d6] md:text-lg font-medium">Hear how AI Study Buddy is helping students study smarter, not harder.</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-soft font-semibold">WHAT STUDENTS SAY</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2" style={{ color: "var(--foreground)" }}>Real reviews from real users</h2>
+            <p className="mx-auto max-w-2xl text-base text-soft md:text-lg font-medium">Hear how AI Study Buddy is helping students study smarter, not harder.</p>
           </div>
           <div className="mt-10 grid gap-8 md:grid-cols-3">
             {reviews.map((review, idx) => (
-              <div key={idx} className="bg-[#181f36] rounded-2xl p-7 flex flex-col items-center text-center shadow-[0_4px_32px_rgba(30,40,90,0.10)] border border-[#232b45] transition-transform hover:scale-[1.03]">
+              <div key={idx} className="subcard-soft rounded-2xl p-7 flex flex-col items-center text-center shadow-lg transition-transform hover:scale-[1.03]">
                 <div className="flex mb-4 gap-1">
                   {[...Array(review.rating)].map((_, i) => (
                     <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="#ffd600" stroke="#eab308" strokeWidth="1.2" className="inline-block">
@@ -561,7 +562,19 @@ export default function Home() {
         </div>
       </section>
 
-      
+
+      {/* CONTACT US FORM SECTION */}
+      <section className="relative mx-auto max-w-2xl px-4 pb-20">
+        <div className="scroll-reveal rounded-3xl card-soft p-8 md:p-12 shadow-[0_14px_45px_rgba(15,23,42,0.18)] border">
+          <div className="space-y-3 text-center mb-6">
+            <p className="text-xs uppercase tracking-[0.25em] text-soft font-semibold">Contact Us</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2" style={{ color: "var(--foreground)" }}>We'd love to hear from you!</h2>
+            <p className="mx-auto max-w-xl text-base text-soft md:text-lg font-medium">Have questions, feedback, or need support? Fill out the form below and our team will get back to you soon.</p>
+          </div>
+          <ContactForm />
+        </div>
+      </section>
+
       </div>
       <Analytics />
     </main>

@@ -141,3 +141,53 @@ textarea,
 select {
   cursor: text;
 }
+
+/* Chat animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s ease-out;
+}
+
+/* Review section light mode fixes */
+html[data-theme="light"] .subcard-soft p {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .subcard-soft span {
+  color: #4b5563;
+}
+
+
+
+@keyframes liquid {
+  0% { filter: blur(60px) hue-rotate(0deg); }
+  50% { filter: blur(80px) hue-rotate(30deg); }
+  100% { filter: blur(60px) hue-rotate(0deg); }
+}
+
+.liquid {
+  animation: liquid 6s ease-in-out infinite;
+}
