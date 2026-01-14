@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useRef, MouseEvent } from "react"
+import { useState } from "react"
 import ThemeToggle from "./ThemeToggle"
 
 const navLinks = [
@@ -17,32 +17,12 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const navRef = useRef<HTMLDivElement>(null)
-
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    const nav = navRef.current
-    if (!nav) return
-    
-    const rect = nav.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    nav.style.setProperty('--mouse-x', `${x}px`)
-    nav.style.setProperty('--mouse-y', `${y}px`)
-  }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-900/80 bg-slate-950/80 backdrop-blur-xl overflow-hidden">
-      <nav 
-        ref={navRef}
-        onMouseMove={handleMouseMove}
-        className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-xs md:text-sm relative
-        before:absolute before:inset-0 before:bg-gradient-radial before:from-indigo-500/10 before:via-transparent before:to-transparent 
-        before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100
-        before:bg-[radial-gradient(200px_circle_at_var(--mouse-x,0)_var(--mouse-y,0),rgba(99,102,241,0.1),transparent_70%)]"
-      >
-        <Link href="/" className="flex items-center gap-2 group transition-transform duration-200 hover:scale-105">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-500/30 text-lg transition-all duration-200 group-hover:bg-indigo-500/50 group-hover:rotate-12">
+    <header className="sticky top-0 z-40 border-b border-slate-900/80 bg-slate-950/80 backdrop-blur-xl">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-xs md:text-sm">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-500/30 text-lg">
             🎓
           </span>
           <div className="flex flex-col leading-tight">
@@ -58,7 +38,7 @@ export default function Navbar() {
         <div className="flex flex-1 items-center justify-end gap-3">
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5 transition-all duration-300 hover:border-indigo-500/50 hover:bg-slate-900/80">
+            <div className="flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5">
               {navLinks.map((link) => {
                 const isActive =
                   pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href))
@@ -66,10 +46,10 @@ export default function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`rounded-full px-3 py-1 text-[11px] font-medium transition-all duration-200 relative overflow-hidden group/link ${
+                    className={`rounded-full px-3 py-1 text-[11px] font-medium transition ${
                       isActive
                         ? "bg-indigo-500 text-slate-50 shadow-sm shadow-indigo-500/40"
-                        : "text-slate-300 hover:text-slate-50 hover:bg-slate-800/50 hover:scale-105"
+                        : "text-slate-300 hover:text-slate-50"
                     }`}
                   >
                     {link.label}
@@ -81,13 +61,13 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-100 transition-all duration-200 hover:border-indigo-400 hover:text-indigo-200 hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/20"
+                className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
               >
                 Log in
               </Link>
               <Link
                 href="/register"
-                className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-indigo-500/50 transition-all duration-200 hover:brightness-110 hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/60 active:scale-95"
+                className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-indigo-500/50 hover:brightness-110"
               >
                 Start studying
               </Link>
@@ -100,7 +80,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-100 text-xs transition-all duration-200 hover:border-indigo-400 hover:bg-slate-800 hover:scale-110 active:scale-95"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-100 text-xs"
               aria-label="Toggle navigation menu"
             >
               {open ? "✕" : "☰"}
@@ -122,10 +102,10 @@ export default function Navbar() {
                     key={link.href}
                     href={link.href}
                     onClick={() => setOpen(false)}
-                    className={`rounded-full px-3 py-1 font-medium transition-all duration-200 ${
+                    className={`rounded-full px-3 py-1 font-medium transition ${
                       isActive
                         ? "bg-indigo-500 text-slate-50 shadow-sm shadow-indigo-500/40"
-                        : "bg-slate-900/80 text-slate-200 hover:text-slate-50 hover:bg-slate-800 hover:scale-105"
+                        : "bg-slate-900/80 text-slate-200 hover:text-slate-50"
                     }`}
                   >
                     {link.label}
@@ -138,14 +118,14 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 font-medium text-slate-100 transition-all duration-200 hover:border-indigo-400 hover:text-indigo-200 hover:scale-105"
+                className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
               >
                 Log in
               </Link>
               <Link
                 href="/register"
                 onClick={() => setOpen(false)}
-                className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 font-semibold text-white shadow-md shadow-indigo-500/50 transition-all duration-200 hover:brightness-110 hover:scale-105 active:scale-95"
+                className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 font-semibold text-white shadow-md shadow-indigo-500/50 hover:brightness-110"
               >
                 Start studying
               </Link>

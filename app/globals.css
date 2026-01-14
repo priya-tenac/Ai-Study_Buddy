@@ -27,7 +27,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   transition: background 250ms ease, color 250ms ease;
   cursor: none;
 }
@@ -140,31 +140,4 @@ input,
 textarea,
 select {
   cursor: text;
-}
-
-/* Navbar mouse glow effect */
-.bg-gradient-radial {
-  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(99, 102, 241, 0.1) 0%, transparent 70%);
-}
-
-/* Smooth hover animations for navbar elements */
-.navbar-item {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.navbar-item:hover {
-  transform: translateY(-1px);
-}
-
-/* Magnetic effect for buttons */
-.magnetic-button {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.magnetic-button:hover {
-  transform: scale(1.05) translateY(-1px);
-}
-
-.magnetic-button:active {
-  transform: scale(0.95);
 }
