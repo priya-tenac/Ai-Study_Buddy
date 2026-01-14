@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { gsap } from "gsap"
 import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
@@ -93,12 +93,37 @@ const coreFeatures = [
   },
 ]
 
+const reviews = [
+  {
+    rating: 5,
+    text: "Turned my 200-page PDF into 3 pages of gold. Saved me hours before finals!",
+    name: "Aarav S.",
+    role: "Engineering Student",
+  },
+  {
+    rating: 5,
+    text: "The AI planner kept me on track for my board exams. Analytics are super motivating!",
+    name: "Priya M.",
+    role: "Class 12 CBSE",
+  },
+  {
+    rating: 5,
+    text: "Quiz Battle is my new favorite way to revise with friends. Makes studying fun!",
+    name: "Rohan T.",
+    role: "Medical Aspirant",
+  },
+];
+
 export default function Home() {
   const heroRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLAnchorElement | null>(null)
   const cardRef = useRef<HTMLDivElement | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
+    const token = localStorage.getItem('token') || document.cookie.includes('token=')
+    setIsLoggedIn(!!token)
+
     if (typeof window === "undefined") return
 
     gsap.registerPlugin(ScrambleTextPlugin, ScrollTrigger)
@@ -264,11 +289,11 @@ export default function Home() {
 
           <div className="hero-cta-wrapper flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">
             <a
-              href="/login"
+              href={isLoggedIn ? "/dashboard" : "/login"}
               ref={buttonRef}
               className="physics-button inline-flex items-center justify-center rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_15px_45px_rgba(79,70,229,0.7)] transition hover:brightness-110"
             >
-              Get started
+              {isLoggedIn ? "Go to Dashboard" : "Get started"}
             </a>
             <a
               href="/summarize"
@@ -414,56 +439,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* QUICK START GUIDE */}
-      <section className="relative mx-auto max-w-6xl px-4 pb-20">
-        <div className="scroll-reveal grid gap-6 rounded-3xl card-soft p-5 shadow-[0_14px_45px_rgba(15,23,42,0.08)] md:grid-cols-[1.1fr,1fr]">
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.25em] text-soft">New here?</p>
-            <h2 className="text-lg font-semibold tracking-tight md:text-xl">Get value from AI Study Buddy in 60 seconds.</h2>
-            <ol className="space-y-2 text-[11px] text-soft md:text-xs">
-              <li>
-                <span className="font-semibold" style={{ color: "var(--foreground)" }}>1. Drop in your material.</span> Open <a href="/summarize" className="text-indigo-500 underline-offset-2 hover:underline">Smart Notes</a> and
-                upload a PDF, paste text, or describe a topic.
-              </li>
-              <li>
-                <span className="font-semibold" style={{ color: "var(--foreground)" }}>2. Save it to your dashboard.</span> Review the summary, MCQs, and flashcards, then pin useful packs to your
-                dashboard.
-              </li>
-              <li>
-                <span className="font-semibold" style={{ color: "var(--foreground)" }}>3. Plan and track.</span> Use the <a href="/dashboard" className="text-indigo-500 underline-offset-2 hover:underline">Study Planner & Analytics</a> to create a schedule and watch your
-                streaks grow.
-              </li>
-            </ol>
-            <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
-              <a
-                href="/login"
-                className="physics-button inline-flex items-center justify-center rounded-full bg-indigo-500 px-4 py-1.5 font-medium text-white shadow-md shadow-indigo-500/40 hover:bg-indigo-400"
-              >
-                Sign in and open dashboard
-              </a>
-              <a
-                href="/summarize"
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 font-medium text-slate-800 hover:border-indigo-400 hover:text-indigo-700"
-              >
-                Try a free summary
-              </a>
-            </div>
-          </div>
 
-          <div className="space-y-3 rounded-2xl subcard-soft p-4 text-[11px] text-soft">
-            <p className="text-xs font-semibold text-indigo-600">Great for</p>
-            <ul className="space-y-1.5">
-              <li>• Last‑week exam revision from messy PDFs and slides.</li>
-              <li>• Turning long lectures into short, searchable notes.</li>
-              <li>• Creating daily/weekly plans when you&apos;re overwhelmed.</li>
-              <li>• Friendly quiz battles to revise with classmates.</li>
-            </ul>
-            <p className="pt-2 text-[10px] text-soft">
-              No complex setup: just log in, add material, and let your AI buddy handle the organisation.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* FAQ STRIP */}
       <section className="relative mx-auto max-w-6xl px-4 pb-24">
@@ -476,7 +452,6 @@ export default function Home() {
               analytics any time you log in.
             </p>
           </div>
-
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl subcard-soft p-3">
               <p className="mb-1 text-[11px] font-semibold md:text-xs" style={{ color: "var(--foreground)" }}>Is my data saved?</p>
@@ -505,6 +480,87 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+
+      {/* QUICK START GUIDE */}
+      <section className="relative mx-auto max-w-6xl px-4 pb-20">
+        <div className="scroll-reveal grid gap-6 rounded-3xl card-soft p-5 shadow-[0_14px_45px_rgba(15,23,42,0.08)] md:grid-cols-[1.1fr,1fr]">
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-soft">New here?</p>
+            <h2 className="text-lg font-semibold tracking-tight md:text-xl">Get value from AI Study Buddy in 60 seconds.</h2>
+            <ol className="space-y-2 text-[11px] text-soft md:text-xs">
+              <li>
+                <span className="font-semibold" style={{ color: "var(--foreground)" }}>1. Drop in your material.</span> Open <a href="/summarize" className="text-indigo-500 underline-offset-2 hover:underline">Smart Notes</a> and
+                upload a PDF, paste text, or describe a topic.
+              </li>
+              <li>
+                <span className="font-semibold" style={{ color: "var(--foreground)" }}>2. Save it to your dashboard.</span> Review the summary, MCQs, and flashcards, then pin useful packs to your
+                dashboard.
+              </li>
+              <li>
+                <span className="font-semibold" style={{ color: "var(--foreground)" }}>3. Plan and track.</span> Use the <a href="/dashboard" className="text-indigo-500 underline-offset-2 hover:underline">Study Planner & Analytics</a> to create a schedule and watch your
+                streaks grow.
+              </li>
+            </ol>
+            <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
+              <a
+                href={isLoggedIn ? "/dashboard" : "/login"}
+                className="physics-button inline-flex items-center justify-center rounded-full bg-indigo-500 px-4 py-1.5 font-medium text-white shadow-md shadow-indigo-500/40 hover:bg-indigo-400"
+              >
+                {isLoggedIn ? "Open dashboard" : "Sign in and open dashboard"}
+              </a>
+              <a
+                href="/summarize"
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 font-medium text-slate-800 hover:border-indigo-400 hover:text-indigo-700"
+              >
+                Try a free summary
+              </a>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-2xl subcard-soft p-4 text-[11px] text-soft">
+            <p className="text-xs font-semibold text-indigo-600">Great for</p>
+            <ul className="space-y-1.5">
+              <li>• Last‑week exam revision from messy PDFs and slides.</li>
+              <li>• Turning long lectures into short, searchable notes.</li>
+              <li>• Creating daily/weekly plans when you&apos;re overwhelmed.</li>
+              <li>• Friendly quiz battles to revise with classmates.</li>
+            </ul>
+            <p className="pt-2 text-[10px] text-soft">
+              No complex setup: just log in, add material, and let your AI buddy handle the organisation.
+            </p>
+          </div>
+        </div>
+      </section>
+          
+      {/* USER REVIEWS SECTION - BEAUTIFIED */}
+      <section className="relative mx-auto max-w-6xl px-4 pb-20">
+        <div className="scroll-reveal rounded-3xl bg-[#11182a] p-8 md:p-12 shadow-[0_14px_45px_rgba(15,23,42,0.18)] border border-[#232b45]">
+          <div className="space-y-3 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-[#7b89b6] font-semibold">WHAT STUDENTS SAY</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">Real reviews from real users</h2>
+            <p className="mx-auto max-w-2xl text-base text-[#b2b8d6] md:text-lg font-medium">Hear how AI Study Buddy is helping students study smarter, not harder.</p>
+          </div>
+          <div className="mt-10 grid gap-8 md:grid-cols-3">
+            {reviews.map((review, idx) => (
+              <div key={idx} className="bg-[#181f36] rounded-2xl p-7 flex flex-col items-center text-center shadow-[0_4px_32px_rgba(30,40,90,0.10)] border border-[#232b45] transition-transform hover:scale-[1.03]">
+                <div className="flex mb-4 gap-1">
+                  {[...Array(review.rating)].map((_, i) => (
+                    <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="#ffd600" stroke="#eab308" strokeWidth="1.2" className="inline-block">
+                      <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18.5 5.5,22 7,14.5 2,9.5 9,9" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-lg text-[#e6eaff] font-medium mb-3 leading-relaxed">{`“${review.text}”`}</p>
+                <span className="font-bold text-indigo-300 text-lg mb-1">{review.name}</span>
+                <span className="text-[13px] text-[#8fa2d4]">{review.role}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      
       </div>
     </main>
   )

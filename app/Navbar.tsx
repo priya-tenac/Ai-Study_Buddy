@@ -4,10 +4,11 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 import ThemeToggle from "./ThemeToggle"
+import { useAuth } from "./AuthContext"
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard" },
+  
   { href: "/study-planner", label: "Study Planner" },
   { href: "/summarize", label: "Smart Notes" },
   { href: "/quiz-battle", label: "AI Quiz Battle" },
@@ -17,6 +18,7 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const { isLoggedIn, logout } = useAuth()
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-900/80 bg-slate-950/80 backdrop-blur-xl">
@@ -35,9 +37,9 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <div className="flex flex-1 items-center justify-end gap-3">
+        <div className="flex flex-1 items-center justify-end gap-0">
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5">
               {navLinks.map((link) => {
                 const isActive =
@@ -59,18 +61,40 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-indigo-500/50 hover:brightness-110"
-              >
-                Start studying
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout()
+                      window.location.href = "/login"
+                    }}
+                    className="rounded-full border border-red-700 bg-red-900/70 px-3 py-1 text-[11px] font-medium text-red-100 hover:border-red-400 hover:text-red-200"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-indigo-500/50 hover:brightness-110"
+                  >
+                    Start studying
+                  </Link>
+                </>
+              )}
               <ThemeToggle />
             </div>
           </div>
@@ -115,20 +139,43 @@ export default function Navbar() {
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setOpen(false)}
-                className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 font-semibold text-white shadow-md shadow-indigo-500/50 hover:brightness-110"
-              >
-                Start studying
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout()
+                      window.location.href = "/login"
+                    }}
+                    className="rounded-full border border-red-700 bg-red-900/70 px-3 py-1 text-[11px] font-medium text-red-100 hover:border-red-400 hover:text-red-200"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 font-medium text-slate-100 hover:border-indigo-400 hover:text-indigo-200"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setOpen(false)}
+                    className="rounded-full bg-gradient-to-r from-violet-500 via-indigo-500 to-fuchsia-400 px-3.5 py-1.5 font-semibold text-white shadow-md shadow-indigo-500/50 hover:brightness-110"
+                  >
+                    Start studying
+                  </Link>
+                </>
+              )}
               <div className="ml-auto">
                 <ThemeToggle />
               </div>
@@ -137,5 +184,5 @@ export default function Navbar() {
         </div>
       )}
     </header>
-  )
+  );
 }

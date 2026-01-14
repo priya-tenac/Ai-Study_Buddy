@@ -8,6 +8,7 @@ import AnimatedSvgLines from "./AnimatedSvgLines"
 import ChatWidget from "./ChatWidget"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
+import { AuthProvider } from "./AuthContext"
 
 export const metadata: Metadata = {
   title: "AI STUDY BUDDY",
@@ -30,15 +31,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <MouseGlow />
-        <PhysicsButtons />
-        <ScrollReveal />
-        <TextScramble />
-        <AnimatedSvgLines />
-        <ChatWidget />
-        <Navbar />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
+        <AuthProvider>
+          <MouseGlow />
+          <PhysicsButtons />
+          <ScrollReveal />
+          <TextScramble />
+          <AnimatedSvgLines />
+          <ChatWidget />
+          <Navbar />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )

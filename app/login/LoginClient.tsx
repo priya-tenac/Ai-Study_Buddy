@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Script from "next/script"
 import { motion } from "framer-motion"
+import { useAuth } from "../AuthContext"
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ export default function LoginClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justVerified = searchParams.get("verified") === "1"
+  const { login } = useAuth()
 
   const handleLogin = async () => {
     setError(null)
@@ -45,13 +47,7 @@ export default function LoginClient() {
         setOtpMessage(`We sent a login code to ${email}.`)
         setOtpSecondsLeft(300)
       } else if (res.ok && data.token) {
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("token", data.token)
-          } catch {
-            // ignore storage errors
-          }
-        }
+        login(data.token)
         router.push("/dashboard")
       } else {
         setError(data.error || "Login failed. Please check your details.")
@@ -77,13 +73,7 @@ export default function LoginClient() {
       const data = await res.json()
 
       if (res.ok && data.token) {
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("token", data.token)
-          } catch {
-            // ignore storage errors
-          }
-        }
+        login(data.token)
         router.push("/dashboard")
       } else {
         setError(data.error || "Invalid code. Please try again.")
@@ -150,13 +140,7 @@ export default function LoginClient() {
       const data = await res.json()
 
       if (res.ok && data.token) {
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("token", data.token)
-          } catch {
-            // ignore storage errors
-          }
-        }
+        login(data.token)
         router.push("/dashboard")
       } else {
         setGoogleError(data.error || "Google sign-in failed. Please try again.")
